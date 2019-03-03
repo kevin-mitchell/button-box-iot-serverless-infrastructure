@@ -6,11 +6,14 @@ provider:
   name: aws
   region: us-west-2
   runtime: nodejs8.10
+  profile: button-box-serverless
   iamRoleStatements:
     - Effect: Allow
       Action:
         - iot:UpdateThingShadow
         - iot:GetThingShadow
+        - iot:ListThingGroupsForThing
+        - iot:ListThingsInThingGroup
       Resource: "*"
 
 functions:
@@ -19,18 +22,4 @@ functions:
     handler: handler.handle
     events:
       - iot:
-          sql: "SELECT * FROM '$aws/things/esp32_14958C/shadow/update'"
-# resources:
-#   Resources:
-#     MyPolicy:
-#       Type: AWS::IoT::Policy
-#       Properties:
-#         PolicyDocument:
-#           Version: "2012-10-17"
-#           Statement:
-#             - Effect: "Allow"
-#               Action:
-#                 - "iot:UpdateThingShadow"
-#                 - "iot:GetThingShadow"
-#               Resource:
-#                 - "*"
+          sql: "SELECT *, clientid() as clientId, newuuid() as randomUUID FROM '$aws/things/esp32_14958C/shadow/update'"
