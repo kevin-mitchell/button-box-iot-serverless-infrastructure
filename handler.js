@@ -1,22 +1,23 @@
 var AWS = require("aws-sdk");
 let config = {
-  endpointAddress: "a2nkurkxw60pe-ats.iot.us-west-2.amazonaws.com",
-  thingName: "esp32_14958C"
+  endpointAddress: "a2nkurkxw60pe-ats.iot.us-west-2.amazonaws.com"
 };
 var iotdata = new AWS.IotData({ endpoint: config.endpointAddress });
 let iot = new AWS.Iot();
+const dynamoDb = new AWS.DynamoDB.DocumentClient();
 
 exports.handle = async data => {
   console.log("\n\nevent:");
   console.log(data);
-
-  let thingGroups = {};
 
   /***********************************************************
    *
    *    Get the groups that this Thing is part of
    *
    ***********************************************************/
+
+  let thingGroups = {};
+
   try {
     thingGroups = await iot
       .listThingGroupsForThing({
@@ -29,6 +30,29 @@ exports.handle = async data => {
 
   console.log("listThingGroupsForThing:");
   console.log(thingGroups);
+
+  //todo: here we should parse the things groups and determine if one of them matches the format
+  //(for example) `michine_XXXXXXX`, and store this value as the group
+
+  /**
+   *
+   * Fetch configuratoin values from the database that show settings that were set by the users such as the display positions,
+   * the times that they want to stop the device from sounding, etc.
+   *
+   */
+
+  const params = {
+    TableName: process.env.DYNAMODB_TABLE,
+    Key: {
+      id: "test"
+    }
+  };
+
+  try {
+    result = await dynamoDb.get(params, (error, result)).promise();
+  } catch (e) {
+    console.log(err, err.stack);
+  }
 
   /***********************************************************
    *
@@ -86,7 +110,7 @@ exports.handle = async data => {
     let updateThingShadow = await iotdata
       .updateThingShadow({
         payload: JSON.stringify(update),
-        thingName: config.thingName
+        thingName: data.clientId
       })
       .promise();
     console.log("updateThingShadowResponse");

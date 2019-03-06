@@ -7,6 +7,8 @@ provider:
   region: us-west-2
   runtime: nodejs8.10
   profile: button-box-serverless
+  environment:
+    DYNAMODB_TABLE: ${self:service}-${opt:stage, self:provider.stage}
   iamRoleStatements:
     - Effect: Allow
       Action:
@@ -15,6 +17,15 @@ provider:
         - iot:ListThingGroupsForThing
         - iot:ListThingsInThingGroup
       Resource: "*"
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE}"
 
 functions:
   change-handler:
@@ -22,4 +33,21 @@ functions:
     handler: handler.handle
     events:
       - iot:
-          sql: "SELECT *, clientid() as clientId, newuuid() as randomUUID FROM '$aws/things/esp32_14958C/shadow/update'"
+          sql: "SELECT *, clientid() as clientId, newuuid() as randomUUID FROM '$aws/things/+/shadow/update'"
+
+resources:
+  Resources:
+    ButtonBoxConfigDynamoDbTable:
+      Type: "AWS::DynamoDB::Table"
+      DeletionPolicy: Retain
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: ${self:provider.environment.DYNAMODB_TABLE}
